@@ -21,22 +21,26 @@ class GUI:
     """Handles all drawing and animation — separated from game logic."""
 
     def __init__(self):
+        # Pygame setup
         pygame.init()
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
         pygame.display.set_caption("Connect-4  ·  Human vs AI")
         self.clock  = pygame.time.Clock()
 
-        self.font_lg = pygame.font.SysFont("consolas", 42, bold=True)
-        self.font_md = pygame.font.SysFont("consolas", 28)
-        self.font_sm = pygame.font.SysFont("consolas", 20)
+        # Fonts
+        self.font_large = pygame.font.SysFont("consolas", 42, bold=True)
+        self.font_medium = pygame.font.SysFont("consolas", 28)
+        self.font_small = pygame.font.SysFont("consolas", 20)
 
+        # Animation state
         self.anim_active  = False
         self.anim_piece   = EMPTY
         self.anim_col     = 0
-        self.anim_row = 0
+        self.anim_target_row = 0
         self.anim_y       = 0.0
-        self.anim_y_tgt = 0.0
+        self.anim_target_y = 0.0
 
+        # Hover state
         self.hover_col    = -1
 
     def _draw_circle_glow(self, surface, color, glow_color, cx, cy, radius):
@@ -63,12 +67,15 @@ class GUI:
              game_over: bool = False, winner: int = EMPTY,
              winning_cells: list = None):
 
+        # Background
         self.screen.fill(BG_COLOR)
 
+        # Top preview row
         self._draw_preview_bar(current_piece, game_over)
 
-        bd_rect = pygame.Rect(0, self._board_top(), WIDTH, ROWS * CELL_SIZE)
-        pygame.draw.rect(self.screen, BOARD_COLOR, bd_rect, border_radius=12)
+        # Board and pieces
+        board_rect = pygame.Rect(0, self._board_top(), WIDTH, ROWS * CELL_SIZE)
+        pygame.draw.rect(self.screen, BOARD_COLOR, board_rect, border_radius=12)
 
         for r in range(ROWS):
             for c in range(COLS):
@@ -86,6 +93,7 @@ class GUI:
                     self._draw_circle_glow(self.screen, color, glow, cx, cy, RADIUS)
 
         if self.anim_active:
+            # Falling piece
             cx = self.anim_col * CELL_SIZE + CELL_SIZE // 2
             cy = int(self.anim_y)
             color = _piece_color(self.anim_piece)
@@ -93,6 +101,7 @@ class GUI:
             self._draw_circle_glow(self.screen, color, glow, cx, cy, RADIUS)
 
         if game_over:
+            # End-game banner
             self._draw_winner_banner(winner)
 
         pygame.display.flip()
@@ -112,11 +121,12 @@ class GUI:
             label = "AI THINKING..."
             color = AI_COLOR
 
-        surf = self.font_sm.render(label, True, color)
+        surf = self.font_small.render(label, True, color)
         self.screen.blit(surf, (WIDTH - surf.get_width() - 16,
                                 CELL_SIZE // 2 - surf.get_height() // 2))
 
         if self.hover_col >= 0 and not self.anim_active and current_piece == HUMAN_PIECE:
+            # Hover ghost piece
             cx = self.hover_col * CELL_SIZE + CELL_SIZE // 2
             cy = CELL_SIZE // 2
             color = _piece_color(current_piece)
@@ -149,24 +159,25 @@ class GUI:
         pygame.draw.rect(self.screen, color,
                          (bx, by, bw, bh), width=3, border_radius=20)
 
-        text_surf = self.font_lg.render(msg, True, color)
+        text_surf = self.font_large.render(msg, True, color)
         self.screen.blit(text_surf,
                          (bx + (bw - text_surf.get_width()) // 2,
                           by + 30))
 
-        sub = self.font_sm.render("Press  R  to restart  |  ESC  to quit",
-                                  True, TEXT_COLOR)
+        sub = self.font_small.render("Press  R  to restart  |  ESC  to quit",
+                          True, TEXT_COLOR)
         self.screen.blit(sub, (bx + (bw - sub.get_width()) // 2,
                                by + 100))
 
     def start_drop_animation(self, col: int, row: int, piece: int):
         """Begin the falling-piece animation."""
+        # Initialize animation values
         self.anim_active   = True
         self.anim_piece    = piece
         self.anim_col      = col
-        self.anim_row = row
+        self.anim_target_row = row
         self.anim_y        = float(CELL_SIZE // 2)
-        _, self.anim_y_tgt = self._cell_center(row, col)
+        _, self.anim_target_y = self._cell_center(row, col)
 
     def update_animation(self) -> bool:
         """
@@ -177,8 +188,8 @@ class GUI:
             return True
 
         self.anim_y += DROP_SPEED
-        if self.anim_y >= self.anim_y_tgt:
-            self.anim_y      = self.anim_y_tgt
+        if self.anim_y >= self.anim_target_y:
+            self.anim_y      = self.anim_target_y
             self.anim_active = False
             return True
 
