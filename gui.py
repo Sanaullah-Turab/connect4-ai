@@ -1,8 +1,3 @@
-# ─────────────────────────────────────────────
-#  gui.py  –  All Pygame rendering & animation
-#  No game logic or AI decisions here
-# ─────────────────────────────────────────────
-
 import pygame
 import math
 from constants import (
@@ -31,36 +26,26 @@ class GUI:
         pygame.display.set_caption("Connect-4  ·  Human vs AI")
         self.clock  = pygame.time.Clock()
 
-        # Fonts
-        self.font_large  = pygame.font.SysFont("consolas", 42, bold=True)
-        self.font_medium = pygame.font.SysFont("consolas", 28)
-        self.font_small  = pygame.font.SysFont("consolas", 20)
+        self.font_lg = pygame.font.SysFont("consolas", 42, bold=True)
+        self.font_md = pygame.font.SysFont("consolas", 28)
+        self.font_sm = pygame.font.SysFont("consolas", 20)
 
-        # Animation state
         self.anim_active  = False
         self.anim_piece   = EMPTY
         self.anim_col     = 0
-        self.anim_target_row = 0
-        self.anim_y       = 0.0        # current pixel y (top of board area)
-        self.anim_target_y = 0.0
+        self.anim_row = 0
+        self.anim_y       = 0.0
+        self.anim_y_tgt = 0.0
 
-        # Hover state
         self.hover_col    = -1
-
-    # ══════════════════════════════════════════
-    #  Drawing helpers
-    # ══════════════════════════════════════════
 
     def _draw_circle_glow(self, surface, color, glow_color, cx, cy, radius):
         """Draw a circle with a soft glow ring."""
-        # Outer glow (slightly larger, translucent)
         glow_surf = pygame.Surface((radius * 4, radius * 4), pygame.SRCALPHA)
         pygame.draw.circle(glow_surf, (*glow_color, 60),
                            (radius * 2, radius * 2), radius + 6)
         surface.blit(glow_surf, (cx - radius * 2, cy - radius * 2))
-        # Main circle
         pygame.draw.circle(surface, color, (cx, cy), radius)
-        # Inner highlight (top-left arc for 3-D feel)
         pygame.draw.circle(surface, tuple(min(c + 60, 255) for c in color),
                            (cx - radius // 5, cy - radius // 5),
                            radius // 4)
@@ -74,28 +59,20 @@ class GUI:
         cy = self._board_top() + row * CELL_SIZE + CELL_SIZE // 2
         return cx, cy
 
-    # ══════════════════════════════════════════
-    #  Main draw routine
-    # ══════════════════════════════════════════
-
     def draw(self, board, current_piece: int,
              game_over: bool = False, winner: int = EMPTY,
              winning_cells: list = None):
 
         self.screen.fill(BG_COLOR)
 
-        # ── Top preview bar ───────────────────
         self._draw_preview_bar(current_piece, game_over)
 
-        # ── Board background ──────────────────
-        board_rect = pygame.Rect(0, self._board_top(), WIDTH, ROWS * CELL_SIZE)
-        pygame.draw.rect(self.screen, BOARD_COLOR, board_rect, border_radius=12)
+        bd_rect = pygame.Rect(0, self._board_top(), WIDTH, ROWS * CELL_SIZE)
+        pygame.draw.rect(self.screen, BOARD_COLOR, bd_rect, border_radius=12)
 
-        # ── Grid cells ────────────────────────
         for r in range(ROWS):
             for c in range(COLS):
                 cx, cy = self._cell_center(r, c)
-                # Cell border
                 pygame.draw.circle(self.screen, CELL_BORDER, (cx, cy), RADIUS + 4)
                 piece = board.grid[r][c]
                 if piece == EMPTY:
@@ -103,14 +80,11 @@ class GUI:
                 else:
                     color = _piece_color(piece)
                     glow  = _piece_glow(piece)
-                    # Highlight winning cells
                     if winning_cells and (r, c) in winning_cells:
                         pygame.draw.circle(self.screen, glow, (cx, cy), RADIUS + 8)
-                        # Pulsing white core
                         pygame.draw.circle(self.screen, (255, 255, 255), (cx, cy), RADIUS // 3)
                     self._draw_circle_glow(self.screen, color, glow, cx, cy, RADIUS)
 
-        # ── Falling piece animation ───────────
         if self.anim_active:
             cx = self.anim_col * CELL_SIZE + CELL_SIZE // 2
             cy = int(self.anim_y)
@@ -118,15 +92,10 @@ class GUI:
             glow  = _piece_glow(self.anim_piece)
             self._draw_circle_glow(self.screen, color, glow, cx, cy, RADIUS)
 
-        # ── Winner banner ─────────────────────
         if game_over:
             self._draw_winner_banner(winner)
 
         pygame.display.flip()
-
-    # ══════════════════════════════════════════
-    #  Sub-components
-    # ══════════════════════════════════════════
 
     def _draw_preview_bar(self, current_piece: int, game_over: bool):
         """Top row: hover ghost piece + turn label."""
@@ -136,7 +105,6 @@ class GUI:
         if game_over:
             return
 
-        # Turn label (right side)
         if current_piece == HUMAN_PIECE:
             label = "YOUR TURN"
             color = HUMAN_COLOR
@@ -144,16 +112,14 @@ class GUI:
             label = "AI THINKING..."
             color = AI_COLOR
 
-        surf = self.font_small.render(label, True, color)
+        surf = self.font_sm.render(label, True, color)
         self.screen.blit(surf, (WIDTH - surf.get_width() - 16,
                                 CELL_SIZE // 2 - surf.get_height() // 2))
 
-        # Hover ghost piece
         if self.hover_col >= 0 and not self.anim_active and current_piece == HUMAN_PIECE:
             cx = self.hover_col * CELL_SIZE + CELL_SIZE // 2
             cy = CELL_SIZE // 2
             color = _piece_color(current_piece)
-            # Transparent ghost
             ghost = pygame.Surface((RADIUS * 2 + 20, RADIUS * 2 + 20), pygame.SRCALPHA)
             pygame.draw.circle(ghost, (*color, 130),
                                (RADIUS + 10, RADIUS + 10), RADIUS)
@@ -165,7 +131,6 @@ class GUI:
         overlay.fill((0, 0, 0, 160))
         self.screen.blit(overlay, (0, 0))
 
-        # Banner box
         bw, bh = 480, 160
         bx, by = (WIDTH - bw) // 2, (HEIGHT - bh) // 2
         pygame.draw.rect(self.screen, WIN_BG,
@@ -181,32 +146,27 @@ class GUI:
             msg   = "IT'S A DRAW!"
             color = ACCENT_COLOR
 
-        # Glow border
         pygame.draw.rect(self.screen, color,
                          (bx, by, bw, bh), width=3, border_radius=20)
 
-        text_surf = self.font_large.render(msg, True, color)
+        text_surf = self.font_lg.render(msg, True, color)
         self.screen.blit(text_surf,
                          (bx + (bw - text_surf.get_width()) // 2,
                           by + 30))
 
-        sub = self.font_small.render("Press  R  to restart  |  ESC  to quit",
-                                     True, TEXT_COLOR)
+        sub = self.font_sm.render("Press  R  to restart  |  ESC  to quit",
+                                  True, TEXT_COLOR)
         self.screen.blit(sub, (bx + (bw - sub.get_width()) // 2,
                                by + 100))
-
-    # ══════════════════════════════════════════
-    #  Animation
-    # ══════════════════════════════════════════
 
     def start_drop_animation(self, col: int, row: int, piece: int):
         """Begin the falling-piece animation."""
         self.anim_active   = True
         self.anim_piece    = piece
         self.anim_col      = col
-        self.anim_target_row = row
-        self.anim_y        = float(CELL_SIZE // 2)   # start at top of board
-        _, self.anim_target_y = self._cell_center(row, col)
+        self.anim_row = row
+        self.anim_y        = float(CELL_SIZE // 2)
+        _, self.anim_y_tgt = self._cell_center(row, col)
 
     def update_animation(self) -> bool:
         """
@@ -217,16 +177,12 @@ class GUI:
             return True
 
         self.anim_y += DROP_SPEED
-        if self.anim_y >= self.anim_target_y:
-            self.anim_y      = self.anim_target_y
+        if self.anim_y >= self.anim_y_tgt:
+            self.anim_y      = self.anim_y_tgt
             self.anim_active = False
-            return True   # finished
+            return True
 
-        return False      # still falling
-
-    # ══════════════════════════════════════════
-    #  Utility
-    # ══════════════════════════════════════════
+        return False
 
     def get_col_from_mouse(self, x: int) -> int:
         return x // CELL_SIZE
