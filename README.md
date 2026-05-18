@@ -1,12 +1,14 @@
 # Connect4 AI
 
-A Python Connect 4 game with a minimax AI opponent and a Pygame GUI.
+A Python Connect 4 game with a minimax AI opponent, a cinematic Pygame GUI, and session audio.
 
 ## Features
 
-- Human vs AI gameplay
-- Minimax with alpha-beta pruning
-- Smooth drop animation and win highlighting
+- Human vs AI gameplay with a main menu
+- Minimax with alpha-beta pruning and selectable difficulty
+- Cinematic 3D-style pieces with gravity-based drops
+- Session scoreboard across restarts
+- Audio feedback for UI, drops, and game outcomes
 
 ## Requirements
 
@@ -39,11 +41,14 @@ python src/main.py
 ## Project Structure
 
 - src/ai.py: minimax AI and board evaluation
+- src/audio.py: audio loading and playback helpers
 - src/board.py: game rules and board state
 - src/gui.py: rendering and animation
 - src/main.py: game loop
 - src/constants.py: configuration values
+- assets/: sound effects (ogg)
 
 ## Notes
 
 If you want to tweak difficulty, adjust `AI_DEPTH` in src/constants.py.
+If audio is missing, the game will run without sound and print a warning.
