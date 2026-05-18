@@ -12,6 +12,7 @@ STATE_HUMAN_TURN  = "human"
 STATE_AI_THINKING = "ai_thinking"
 STATE_ANIMATING   = "animating"
 STATE_GAME_OVER   = "game_over"
+STATE_MENU        = "menu"
 
 
 def new_game():
@@ -23,6 +24,14 @@ def run():
     board, state, current_piece, winner, winning_cells, pending_row, pending_col = new_game()
 
     gui = GUI()
+    selected_depth = 3
+    menu_mouse_pos = (-1, -1)
+
+    session_human_wins = 0
+    session_ai_wins = 0
+    session_draws = 0
+
+    state = STATE_MENU
 
     while True:
         # Input handling
@@ -36,10 +45,30 @@ def run():
                 if event.key == pygame.K_ESCAPE:
                     gui.quit()
                     sys.exit()
-                if event.key == pygame.K_r:
+                if event.key == pygame.K_r and state != STATE_MENU:
                     board, state, current_piece, winner, winning_cells, pending_row, pending_col = new_game()
                     gui.anim_active = False
                     gui.hover_col   = -1
+
+            if state == STATE_MENU:
+                if event.type == pygame.MOUSEMOTION:
+                    menu_mouse_pos = event.pos
+
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    choice = gui.get_menu_action(event.pos)
+                    if choice == 0:
+                        selected_depth = 3
+                    elif choice == 1:
+                        selected_depth = 5
+                    elif choice == 2:
+                        gui.quit()
+                        sys.exit()
+
+                    if choice in (0, 1):
+                        board, state, current_piece, winner, winning_cells, pending_row, pending_col = new_game()
+                        gui.anim_active = False
+                        gui.hover_col   = -1
+                continue
 
             if event.type == pygame.MOUSEMOTION and state == STATE_HUMAN_TURN:
                 col = gui.get_col_from_mouse(event.pos[0])
@@ -56,6 +85,12 @@ def run():
                     state     = STATE_ANIMATING
                     gui.set_hover(-1)
 
+        # Menu render
+        if state == STATE_MENU:
+            gui.draw_menu(menu_mouse_pos, session_human_wins, session_ai_wins, session_draws)
+            gui.tick()
+            continue
+
         # Animation step
         if state == STATE_ANIMATING:
             done = gui.update_animation()
@@ -66,10 +101,15 @@ def run():
                     winning_cells = board.get_winning_cells(current_piece)
                     winner = current_piece
                     state         = STATE_GAME_OVER
+                    if current_piece == HUMAN_PIECE:
+                        session_human_wins += 1
+                    else:
+                        session_ai_wins += 1
 
                 elif board.is_full():
                     winner = EMPTY
                     state  = STATE_GAME_OVER
+                    session_draws += 1
 
                 else:
                     # Switch turns
@@ -83,7 +123,7 @@ def run():
             gui.draw(board, current_piece, False, EMPTY, [])
             gui.tick()
 
-            ai_col = get_ai_move(board)
+            ai_col = get_ai_move(board, selected_depth)
             ai_row = board.get_next_open_row(ai_col)
 
             pending_row, pending_col = ai_row, ai_col
@@ -95,7 +135,10 @@ def run():
         gui.draw(board, current_piece,
                  game_over=game_over,
                  winner=winner,
-                 winning_cells=winning_cells)
+                 winning_cells=winning_cells,
+                 human_wins=session_human_wins,
+                 ai_wins=session_ai_wins,
+                 draws=session_draws)
 
         gui.tick()
 if __name__ == "__main__":

@@ -4,7 +4,7 @@ from constants import (
     ROWS, COLS, CELL_SIZE, RADIUS, WIDTH, HEIGHT,
     BG_COLOR, BOARD_COLOR, CELL_BORDER, EMPTY_COLOR,
     HUMAN_COLOR, HUMAN_GLOW, AI_COLOR, AI_GLOW,
-    TEXT_COLOR, ACCENT_COLOR, WIN_BG,
+    TEXT_COLOR, ACCENT_COLOR, WIN_BG, SHADOW,
     HUMAN_PIECE, AI_PIECE, EMPTY, DROP_SPEED, FPS
 )
 
@@ -63,9 +63,115 @@ class GUI:
         cy = self._board_top() + row * CELL_SIZE + CELL_SIZE // 2
         return cx, cy
 
+    def _menu_layout(self):
+        title_y = int(HEIGHT * 0.2)
+        button_width = min(520, WIDTH - 80)
+        button_height = 64
+        gap = 18
+        start_y = int(HEIGHT * 0.42)
+        x = (WIDTH - button_width) // 2
+
+        buttons = []
+        for i in range(3):
+            y = start_y + i * (button_height + gap)
+            buttons.append(pygame.Rect(x, y, button_width, button_height))
+
+        return title_y, buttons
+
+    def _draw_menu_button(self, rect, label, hovered: bool):
+        shadow_rect = rect.move(0, 6)
+        shadow = pygame.Surface((shadow_rect.width, shadow_rect.height), pygame.SRCALPHA)
+        pygame.draw.rect(shadow, SHADOW, shadow.get_rect(), border_radius=14)
+        self.screen.blit(shadow, shadow_rect.topleft)
+
+        if hovered:
+            glow = pygame.Surface((rect.width + 30, rect.height + 30), pygame.SRCALPHA)
+            glow_rect = glow.get_rect()
+            for i, alpha in enumerate((80, 50, 25)):
+                inset = 6 * i
+                pygame.draw.rect(
+                    glow,
+                    (*ACCENT_COLOR, alpha),
+                    glow_rect.inflate(-inset * 2, -inset * 2),
+                    border_radius=16,
+                )
+            self.screen.blit(glow, (rect.x - 15, rect.y - 15))
+
+        pygame.draw.rect(self.screen, WIN_BG, rect, border_radius=12)
+        border_color = ACCENT_COLOR if hovered else CELL_BORDER
+        pygame.draw.rect(self.screen, border_color, rect, width=2, border_radius=12)
+
+        text_color = ACCENT_COLOR if hovered else TEXT_COLOR
+        text_surf = self.font_medium.render(label, True, text_color)
+        self.screen.blit(
+            text_surf,
+            (rect.centerx - text_surf.get_width() // 2,
+             rect.centery - text_surf.get_height() // 2),
+        )
+
+    def draw_menu(self, mouse_pos, human_wins: int, ai_wins: int, draws: int):
+        self.screen.fill(BG_COLOR)
+
+        glow = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        pygame.draw.circle(glow, (*ACCENT_COLOR, 60), (int(WIDTH * 0.2), int(HEIGHT * 0.2)), int(WIDTH * 0.45))
+        pygame.draw.circle(glow, (*ACCENT_COLOR, 40), (int(WIDTH * 0.85), int(HEIGHT * 0.15)), int(WIDTH * 0.35))
+        self.screen.blit(glow, (0, 0))
+
+        title_y, buttons = self._menu_layout()
+        title = self.font_large.render("CONNECT-4 AI", True, TEXT_COLOR)
+        self.screen.blit(title, (WIDTH // 2 - title.get_width() // 2, title_y))
+
+        subtitle = self.font_small.render("Select difficulty", True, ACCENT_COLOR)
+        self.screen.blit(subtitle, (WIDTH // 2 - subtitle.get_width() // 2, title_y + 48))
+
+        labels = [
+            "Play vs AI - Standard",
+            "Play vs AI - Hard",
+            "Quit",
+        ]
+
+        for i, rect in enumerate(buttons):
+            hovered = rect.collidepoint(mouse_pos)
+            self._draw_menu_button(rect, labels[i], hovered)
+
+        panel_width = min(560, WIDTH - 80)
+        panel_height = 44
+        panel_x = (WIDTH - panel_width) // 2
+        panel_y = buttons[-1].bottom + 24
+        panel_rect = pygame.Rect(panel_x, panel_y, panel_width, panel_height)
+        pygame.draw.rect(self.screen, WIN_BG, panel_rect, border_radius=10)
+        pygame.draw.rect(self.screen, CELL_BORDER, panel_rect, width=2, border_radius=10)
+
+        parts = [
+            ("HUMAN: ", TEXT_COLOR),
+            (str(human_wins), ACCENT_COLOR),
+            ("   |   DRAWS: ", TEXT_COLOR),
+            (str(draws), ACCENT_COLOR),
+            ("   |   AI: ", TEXT_COLOR),
+            (str(ai_wins), ACCENT_COLOR),
+        ]
+        part_surfs = [self.font_small.render(text, True, color) for text, color in parts]
+        total_width = sum(surf.get_width() for surf in part_surfs)
+        start_x = panel_rect.centerx - total_width // 2
+        y = panel_rect.centery - part_surfs[0].get_height() // 2
+        x = start_x
+        for surf in part_surfs:
+            self.screen.blit(surf, (x, y))
+            x += surf.get_width()
+
+        pygame.display.flip()
+
+    def get_menu_action(self, mouse_pos) -> int:
+        _, buttons = self._menu_layout()
+        for i, rect in enumerate(buttons):
+            if rect.collidepoint(mouse_pos):
+                return i
+        return -1
+
     def draw(self, board, current_piece: int,
              game_over: bool = False, winner: int = EMPTY,
-             winning_cells: list = None):
+             winning_cells: list = None,
+             human_wins: int = 0, ai_wins: int = 0, draws: int = 0):
 
         # Background
         self.screen.fill(BG_COLOR)
@@ -102,7 +208,7 @@ class GUI:
 
         if game_over:
             # End-game banner
-            self._draw_winner_banner(winner)
+            self._draw_winner_banner(winner, human_wins, ai_wins, draws)
 
         pygame.display.flip()
 
@@ -135,13 +241,13 @@ class GUI:
                                (RADIUS + 10, RADIUS + 10), RADIUS)
             self.screen.blit(ghost, (cx - RADIUS - 10, cy - RADIUS - 10))
 
-    def _draw_winner_banner(self, winner: int):
+    def _draw_winner_banner(self, winner: int, human_wins: int, ai_wins: int, draws: int):
         """Semi-transparent overlay with winner message."""
         overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 160))
         self.screen.blit(overlay, (0, 0))
 
-        bw, bh = 480, 160
+        bw, bh = 480, 190
         bx, by = (WIDTH - bw) // 2, (HEIGHT - bh) // 2
         pygame.draw.rect(self.screen, WIN_BG,
                          (bx, by, bw, bh), border_radius=20)
@@ -168,6 +274,11 @@ class GUI:
                           True, TEXT_COLOR)
         self.screen.blit(sub, (bx + (bw - sub.get_width()) // 2,
                                by + 100))
+
+        record = f"HUMAN {human_wins}  |  DRAWS {draws}  |  AI {ai_wins}"
+        record_surf = self.font_small.render(record, True, ACCENT_COLOR)
+        self.screen.blit(record_surf, (bx + (bw - record_surf.get_width()) // 2,
+                                       by + 135))
 
     def start_drop_animation(self, col: int, row: int, piece: int):
         """Begin the falling-piece animation."""

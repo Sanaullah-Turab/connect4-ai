@@ -159,12 +159,12 @@ def minimax(board, depth: int, alpha: float, beta: float, is_max: bool) -> tuple
         return (best_col, best_score)
 
 
-def get_ai_move(board) -> int:
+def get_ai_move(board, search_depth: int) -> int:
     """
     Public interface: returns the best column for the AI to play.
     Called from main.py — no AI internals leak outside this file.
     """
-    col, _ = minimax(board, AI_DEPTH, -math.inf, math.inf, True)
+    col, _ = minimax(board, search_depth, -math.inf, math.inf, True)
     # Fallback when no valid columns are found
     if col is None:
         valid = board.get_valid_columns()
