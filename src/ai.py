@@ -16,24 +16,26 @@ def _score_window(window: list, piece: int) -> int:
       -80       → opponent has 3 + 1 empty (urgent block)
       -5        → opponent has 2 + 2 empty
     """
-    opp = HUMAN_PIECE if piece == AI_PIECE else AI_PIECE
+    opponent = HUMAN_PIECE if piece == AI_PIECE else AI_PIECE
 
-    p_cnt = window.count(piece)
-    e_cnt = window.count(EMPTY)
-    o_cnt = window.count(opp)
+    piece_count = window.count(piece)
+    empty_count = window.count(EMPTY)
+    opp_count = window.count(opponent)
 
     score = 0
 
-    if p_cnt == 4:
+    # Score our patterns
+    if piece_count == 4:
         score += SCORE_FOUR
-    elif p_cnt == 3 and e_cnt == 1:
+    elif piece_count == 3 and empty_count == 1:
         score += SCORE_THREE
-    elif p_cnt == 2 and e_cnt == 2:
+    elif piece_count == 2 and empty_count == 2:
         score += SCORE_TWO
 
-    if o_cnt == 3 and e_cnt == 1:
+    # Penalize opponent threats
+    if opp_count == 3 and empty_count == 1:
         score += BLOCK_THREE
-    elif o_cnt == 2 and e_cnt == 2:
+    elif opp_count == 2 and empty_count == 2:
         score += BLOCK_TWO
 
     return score
@@ -44,30 +46,35 @@ def evaluate_board(board, piece: int) -> int:
     Full board heuristic: sum scores from all horizontal, vertical,
     and diagonal windows of size 4, plus center column preference.
     """
-    g = board.grid
+    grid = board.grid
     score = 0
 
-    center = [g[r][COLS // 2] for r in range(ROWS)]
+    # Center column preference
+    center = [grid[r][COLS // 2] for r in range(ROWS)]
     score += center.count(piece) * SCORE_CENTER
 
+    # Horizontal windows
     for r in range(ROWS):
         for c in range(COLS - 3):
-            window = [g[r][c + i] for i in range(4)]
+            window = [grid[r][c + i] for i in range(4)]
             score += _score_window(window, piece)
 
+    # Vertical windows
     for c in range(COLS):
         for r in range(ROWS - 3):
-            window = [g[r + i][c] for i in range(4)]
+            window = [grid[r + i][c] for i in range(4)]
             score += _score_window(window, piece)
 
+    # Diagonal down-right
     for r in range(ROWS - 3):
         for c in range(COLS - 3):
-            window = [g[r + i][c + i] for i in range(4)]
+            window = [grid[r + i][c + i] for i in range(4)]
             score += _score_window(window, piece)
 
+    # Diagonal up-right
     for r in range(3, ROWS):
         for c in range(COLS - 3):
-            window = [g[r - i][c + i] for i in range(4)]
+            window = [grid[r - i][c + i] for i in range(4)]
             score += _score_window(window, piece)
 
     return score
@@ -90,9 +97,10 @@ def minimax(board, depth: int, alpha: float, beta: float, is_max: bool) -> tuple
       best_col is None at terminal/leaf nodes.
     """
     valid_cols = board.get_valid_columns()
-    term = board.is_terminal()
+    is_terminal = board.is_terminal()
 
-    if term:
+    # Terminal and depth limits
+    if is_terminal:
         if board.check_win(AI_PIECE):
             return (None,  math.inf)
         elif board.check_win(HUMAN_PIECE):
@@ -103,18 +111,20 @@ def minimax(board, depth: int, alpha: float, beta: float, is_max: bool) -> tuple
     if depth == 0:
         return (None, evaluate_board(board, AI_PIECE))
 
-    order = sorted(valid_cols, key=lambda c: -abs(c - COLS // 2) * -1)
+    # Try center columns first to improve pruning
+    ordered_cols = sorted(valid_cols, key=lambda c: -abs(c - COLS // 2) * -1)
 
+    # Maximizing player (AI)
     if is_max:
         best_score = -math.inf
         best_col   = valid_cols[0]
 
-        for col in order:
+        for col in ordered_cols:
             row = board.get_next_open_row(col)
-            tmp = board.copy()
-            tmp.drop_piece(row, col, AI_PIECE)
+            temp_board = board.copy()
+            temp_board.drop_piece(row, col, AI_PIECE)
 
-            _, score = minimax(tmp, depth - 1, alpha, beta, False)
+            _, score = minimax(temp_board, depth - 1, alpha, beta, False)
 
             if score > best_score:
                 best_score = score
@@ -126,16 +136,17 @@ def minimax(board, depth: int, alpha: float, beta: float, is_max: bool) -> tuple
 
         return (best_col, best_score)
 
+    # Minimizing player (human)
     else:
         best_score = math.inf
         best_col   = valid_cols[0]
 
-        for col in order:
+        for col in ordered_cols:
             row = board.get_next_open_row(col)
-            tmp = board.copy()
-            tmp.drop_piece(row, col, HUMAN_PIECE)
+            temp_board = board.copy()
+            temp_board.drop_piece(row, col, HUMAN_PIECE)
 
-            _, score = minimax(tmp, depth - 1, alpha, beta, True)
+            _, score = minimax(temp_board, depth - 1, alpha, beta, True)
 
             if score < best_score:
                 best_score = score
@@ -154,6 +165,7 @@ def get_ai_move(board) -> int:
     Called from main.py — no AI internals leak outside this file.
     """
     col, _ = minimax(board, AI_DEPTH, -math.inf, math.inf, True)
+    # Fallback when no valid columns are found
     if col is None:
         valid = board.get_valid_columns()
         col = valid[0] if valid else 0

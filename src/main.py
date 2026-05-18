@@ -7,6 +7,7 @@ from board    import Board
 from ai       import get_ai_move
 from gui      import GUI
 
+# Game state labels
 STATE_HUMAN_TURN  = "human"
 STATE_AI_THINKING = "ai_thinking"
 STATE_ANIMATING   = "animating"
@@ -19,11 +20,12 @@ def new_game():
 
 
 def run():
-    board, state, cur_piece, winner, win_cells, pend_row, pend_col = new_game()
+    board, state, current_piece, winner, winning_cells, pending_row, pending_col = new_game()
 
     gui = GUI()
 
     while True:
+        # Input handling
         for event in pygame.event.get():
 
             if event.type == pygame.QUIT:
@@ -35,7 +37,7 @@ def run():
                     gui.quit()
                     sys.exit()
                 if event.key == pygame.K_r:
-                    board, state, cur_piece, winner, win_cells, pend_row, pend_col = new_game()
+                    board, state, current_piece, winner, winning_cells, pending_row, pending_col = new_game()
                     gui.anim_active = False
                     gui.hover_col   = -1
 
@@ -49,19 +51,20 @@ def run():
 
                 if 0 <= col < 7 and board.is_valid_column(col):
                     row = board.get_next_open_row(col)
-                    pend_row, pend_col = row, col
+                    pending_row, pending_col = row, col
                     gui.start_drop_animation(col, row, HUMAN_PIECE)
                     state     = STATE_ANIMATING
                     gui.set_hover(-1)
 
+        # Animation step
         if state == STATE_ANIMATING:
             done = gui.update_animation()
             if done:
-                board.drop_piece(pend_row, pend_col, cur_piece)
+                board.drop_piece(pending_row, pending_col, current_piece)
 
-                if board.check_win(cur_piece):
-                    win_cells = board.get_winning_cells(cur_piece)
-                    winner = cur_piece
+                if board.check_win(current_piece):
+                    winning_cells = board.get_winning_cells(current_piece)
+                    winner = current_piece
                     state         = STATE_GAME_OVER
 
                 elif board.is_full():
@@ -69,27 +72,30 @@ def run():
                     state  = STATE_GAME_OVER
 
                 else:
-                    cur_piece = AI_PIECE if cur_piece == HUMAN_PIECE \
+                    # Switch turns
+                    current_piece = AI_PIECE if current_piece == HUMAN_PIECE \
                                              else HUMAN_PIECE
-                    state = STATE_AI_THINKING if cur_piece == AI_PIECE \
+                    state = STATE_AI_THINKING if current_piece == AI_PIECE \
                                               else STATE_HUMAN_TURN
 
         elif state == STATE_AI_THINKING:
-            gui.draw(board, cur_piece, False, EMPTY, [])
+            # Let the UI show the thinking state before computing
+            gui.draw(board, current_piece, False, EMPTY, [])
             gui.tick()
 
             ai_col = get_ai_move(board)
             ai_row = board.get_next_open_row(ai_col)
 
-            pend_row, pend_col = ai_row, ai_col
+            pending_row, pending_col = ai_row, ai_col
             gui.start_drop_animation(ai_col, ai_row, AI_PIECE)
             state = STATE_ANIMATING
 
-        is_over = (state == STATE_GAME_OVER)
-        gui.draw(board, cur_piece,
-                 game_over=is_over,
+        # Render
+        game_over = (state == STATE_GAME_OVER)
+        gui.draw(board, current_piece,
+                 game_over=game_over,
                  winner=winner,
-                 winning_cells=win_cells)
+                 winning_cells=winning_cells)
 
         gui.tick()
 if __name__ == "__main__":

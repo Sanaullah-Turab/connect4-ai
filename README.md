@@ -26,7 +26,7 @@ pip install -r requirements.txt
 ## Run
 
 ```bash
-python main.py
+python src/main.py
 ```
 
 ## Controls
@@ -38,12 +38,12 @@ python main.py
 
 ## Project Structure
 
-- ai.py: minimax AI and board evaluation
-- board.py: game rules and board state
-- gui.py: rendering and animation
-- main.py: game loop
-- constants.py: configuration values
+- src/ai.py: minimax AI and board evaluation
+- src/board.py: game rules and board state
+- src/gui.py: rendering and animation
+- src/main.py: game loop
+- src/constants.py: configuration values
 
 ## Notes
 
-If you want to tweak difficulty, adjust `AI_DEPTH` in constants.py.
+If you want to tweak difficulty, adjust `AI_DEPTH` in src/constants.py.
