@@ -27,6 +27,10 @@ def run():
     selected_depth = 3
     menu_mouse_pos = (-1, -1)
 
+    session_human_wins = 0
+    session_ai_wins = 0
+    session_draws = 0
+
     state = STATE_MENU
 
     while True:
@@ -83,7 +87,7 @@ def run():
 
         # Menu render
         if state == STATE_MENU:
-            gui.draw_menu(menu_mouse_pos)
+            gui.draw_menu(menu_mouse_pos, session_human_wins, session_ai_wins, session_draws)
             gui.tick()
             continue
 
@@ -97,10 +101,15 @@ def run():
                     winning_cells = board.get_winning_cells(current_piece)
                     winner = current_piece
                     state         = STATE_GAME_OVER
+                    if current_piece == HUMAN_PIECE:
+                        session_human_wins += 1
+                    else:
+                        session_ai_wins += 1
 
                 elif board.is_full():
                     winner = EMPTY
                     state  = STATE_GAME_OVER
+                    session_draws += 1
 
                 else:
                     # Switch turns
@@ -126,7 +135,10 @@ def run():
         gui.draw(board, current_piece,
                  game_over=game_over,
                  winner=winner,
-                 winning_cells=winning_cells)
+                 winning_cells=winning_cells,
+                 human_wins=session_human_wins,
+                 ai_wins=session_ai_wins,
+                 draws=session_draws)
 
         gui.tick()
 if __name__ == "__main__":

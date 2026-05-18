@@ -109,7 +109,7 @@ class GUI:
              rect.centery - text_surf.get_height() // 2),
         )
 
-    def draw_menu(self, mouse_pos):
+    def draw_menu(self, mouse_pos, human_wins: int, ai_wins: int, draws: int):
         self.screen.fill(BG_COLOR)
 
         glow = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
@@ -134,6 +134,31 @@ class GUI:
             hovered = rect.collidepoint(mouse_pos)
             self._draw_menu_button(rect, labels[i], hovered)
 
+        panel_width = min(560, WIDTH - 80)
+        panel_height = 44
+        panel_x = (WIDTH - panel_width) // 2
+        panel_y = buttons[-1].bottom + 24
+        panel_rect = pygame.Rect(panel_x, panel_y, panel_width, panel_height)
+        pygame.draw.rect(self.screen, WIN_BG, panel_rect, border_radius=10)
+        pygame.draw.rect(self.screen, CELL_BORDER, panel_rect, width=2, border_radius=10)
+
+        parts = [
+            ("HUMAN: ", TEXT_COLOR),
+            (str(human_wins), ACCENT_COLOR),
+            ("   |   DRAWS: ", TEXT_COLOR),
+            (str(draws), ACCENT_COLOR),
+            ("   |   AI: ", TEXT_COLOR),
+            (str(ai_wins), ACCENT_COLOR),
+        ]
+        part_surfs = [self.font_small.render(text, True, color) for text, color in parts]
+        total_width = sum(surf.get_width() for surf in part_surfs)
+        start_x = panel_rect.centerx - total_width // 2
+        y = panel_rect.centery - part_surfs[0].get_height() // 2
+        x = start_x
+        for surf in part_surfs:
+            self.screen.blit(surf, (x, y))
+            x += surf.get_width()
+
         pygame.display.flip()
 
     def get_menu_action(self, mouse_pos) -> int:
@@ -145,7 +170,8 @@ class GUI:
 
     def draw(self, board, current_piece: int,
              game_over: bool = False, winner: int = EMPTY,
-             winning_cells: list = None):
+             winning_cells: list = None,
+             human_wins: int = 0, ai_wins: int = 0, draws: int = 0):
 
         # Background
         self.screen.fill(BG_COLOR)
@@ -182,7 +208,7 @@ class GUI:
 
         if game_over:
             # End-game banner
-            self._draw_winner_banner(winner)
+            self._draw_winner_banner(winner, human_wins, ai_wins, draws)
 
         pygame.display.flip()
 
@@ -215,13 +241,13 @@ class GUI:
                                (RADIUS + 10, RADIUS + 10), RADIUS)
             self.screen.blit(ghost, (cx - RADIUS - 10, cy - RADIUS - 10))
 
-    def _draw_winner_banner(self, winner: int):
+    def _draw_winner_banner(self, winner: int, human_wins: int, ai_wins: int, draws: int):
         """Semi-transparent overlay with winner message."""
         overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 160))
         self.screen.blit(overlay, (0, 0))
 
-        bw, bh = 480, 160
+        bw, bh = 480, 190
         bx, by = (WIDTH - bw) // 2, (HEIGHT - bh) // 2
         pygame.draw.rect(self.screen, WIN_BG,
                          (bx, by, bw, bh), border_radius=20)
@@ -248,6 +274,11 @@ class GUI:
                           True, TEXT_COLOR)
         self.screen.blit(sub, (bx + (bw - sub.get_width()) // 2,
                                by + 100))
+
+        record = f"HUMAN {human_wins}  |  DRAWS {draws}  |  AI {ai_wins}"
+        record_surf = self.font_small.render(record, True, ACCENT_COLOR)
+        self.screen.blit(record_surf, (bx + (bw - record_surf.get_width()) // 2,
+                                       by + 135))
 
     def start_drop_animation(self, col: int, row: int, piece: int):
         """Begin the falling-piece animation."""
