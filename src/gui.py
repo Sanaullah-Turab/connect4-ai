@@ -7,6 +7,7 @@ from constants import (
     TEXT_COLOR, ACCENT_COLOR, WIN_BG, SHADOW,
     HUMAN_PIECE, AI_PIECE, EMPTY, DROP_SPEED, FPS, GRAVITY, MAX_FALL_SPEED
 )
+from audio import play_drop, play_hit
 
 
 def _piece_color(piece: int):
@@ -334,6 +335,8 @@ class GUI:
         self.anim_y        = float(CELL_SIZE // 2)
         _, self.anim_target_y = self._cell_center(row, col)
         self.anim_velocity = 0.0
+        # Play drop sound at the start of the fall
+        play_drop()
 
     def update_animation(self) -> bool:
         """
@@ -349,6 +352,8 @@ class GUI:
             self.anim_y      = self.anim_target_y
             self.anim_active = False
             self.anim_velocity = 0.0
+            # Play impact sound the frame the animation stops
+            play_hit()
             return True
 
         return False

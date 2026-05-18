@@ -6,6 +6,7 @@ from constants import HUMAN_PIECE, AI_PIECE, EMPTY
 from board    import Board
 from ai       import get_ai_move
 from gui      import GUI
+from audio    import play_hover, play_select, play_win, play_draw, play_gameover
 
 # Game state labels
 STATE_HUMAN_TURN  = "human"
@@ -26,6 +27,7 @@ def run():
     gui = GUI()
     selected_depth = 3
     menu_mouse_pos = (-1, -1)
+    last_menu_hover = -1
 
     # Session totals
     session_human_wins = 0
@@ -47,6 +49,7 @@ def run():
                     gui.quit()
                     sys.exit()
                 if event.key == pygame.K_r and state != STATE_MENU:
+                    play_select()
                     board, state, current_piece, winner, winning_cells, pending_row, pending_col = new_game()
                     gui.anim_active = False
                     gui.hover_col   = -1
@@ -55,9 +58,16 @@ def run():
                 # Menu input handling
                 if event.type == pygame.MOUSEMOTION:
                     menu_mouse_pos = event.pos
+                    hovered = gui.get_menu_action(event.pos)
+                    if hovered != last_menu_hover:
+                        if hovered != -1:
+                            play_hover()
+                        last_menu_hover = hovered
 
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     choice = gui.get_menu_action(event.pos)
+                    if choice != -1:
+                        play_select()
                     # Map menu choice to AI depth or quit
                     if choice == 0:
                         selected_depth = 3
@@ -83,6 +93,7 @@ def run():
                 col = gui.get_col_from_mouse(event.pos[0])
 
                 if 0 <= col < 7 and board.is_valid_column(col):
+                    play_select()
                     row = board.get_next_open_row(col)
                     pending_row, pending_col = row, col
                     gui.start_drop_animation(col, row, HUMAN_PIECE)
@@ -105,6 +116,9 @@ def run():
                     winning_cells = board.get_winning_cells(current_piece)
                     winner = current_piece
                     state         = STATE_GAME_OVER
+                    # Play game-over sounds once on transition
+                    play_win()
+                    play_gameover()
                     # Update session totals once per game
                     if current_piece == HUMAN_PIECE:
                         session_human_wins += 1
@@ -114,6 +128,9 @@ def run():
                 elif board.is_full():
                     winner = EMPTY
                     state  = STATE_GAME_OVER
+                    # Play game-over sounds once on transition
+                    play_draw()
+                    play_gameover()
                     # Update session totals once per game
                     session_draws += 1
 
