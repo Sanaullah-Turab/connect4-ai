@@ -4,7 +4,7 @@ from constants import (
     ROWS, COLS, CELL_SIZE, RADIUS, WIDTH, HEIGHT,
     BG_COLOR, BOARD_COLOR, CELL_BORDER, EMPTY_COLOR,
     HUMAN_COLOR, HUMAN_GLOW, AI_COLOR, AI_GLOW,
-    TEXT_COLOR, ACCENT_COLOR, WIN_BG,
+    TEXT_COLOR, ACCENT_COLOR, WIN_BG, SHADOW,
     HUMAN_PIECE, AI_PIECE, EMPTY, DROP_SPEED, FPS
 )
 
@@ -62,6 +62,86 @@ class GUI:
         cx = col * CELL_SIZE + CELL_SIZE // 2
         cy = self._board_top() + row * CELL_SIZE + CELL_SIZE // 2
         return cx, cy
+
+    def _menu_layout(self):
+        title_y = int(HEIGHT * 0.2)
+        button_width = min(520, WIDTH - 80)
+        button_height = 64
+        gap = 18
+        start_y = int(HEIGHT * 0.42)
+        x = (WIDTH - button_width) // 2
+
+        buttons = []
+        for i in range(3):
+            y = start_y + i * (button_height + gap)
+            buttons.append(pygame.Rect(x, y, button_width, button_height))
+
+        return title_y, buttons
+
+    def _draw_menu_button(self, rect, label, hovered: bool):
+        shadow_rect = rect.move(0, 6)
+        shadow = pygame.Surface((shadow_rect.width, shadow_rect.height), pygame.SRCALPHA)
+        pygame.draw.rect(shadow, SHADOW, shadow.get_rect(), border_radius=14)
+        self.screen.blit(shadow, shadow_rect.topleft)
+
+        if hovered:
+            glow = pygame.Surface((rect.width + 30, rect.height + 30), pygame.SRCALPHA)
+            glow_rect = glow.get_rect()
+            for i, alpha in enumerate((80, 50, 25)):
+                inset = 6 * i
+                pygame.draw.rect(
+                    glow,
+                    (*ACCENT_COLOR, alpha),
+                    glow_rect.inflate(-inset * 2, -inset * 2),
+                    border_radius=16,
+                )
+            self.screen.blit(glow, (rect.x - 15, rect.y - 15))
+
+        pygame.draw.rect(self.screen, WIN_BG, rect, border_radius=12)
+        border_color = ACCENT_COLOR if hovered else CELL_BORDER
+        pygame.draw.rect(self.screen, border_color, rect, width=2, border_radius=12)
+
+        text_color = ACCENT_COLOR if hovered else TEXT_COLOR
+        text_surf = self.font_medium.render(label, True, text_color)
+        self.screen.blit(
+            text_surf,
+            (rect.centerx - text_surf.get_width() // 2,
+             rect.centery - text_surf.get_height() // 2),
+        )
+
+    def draw_menu(self, mouse_pos):
+        self.screen.fill(BG_COLOR)
+
+        glow = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        pygame.draw.circle(glow, (*ACCENT_COLOR, 60), (int(WIDTH * 0.2), int(HEIGHT * 0.2)), int(WIDTH * 0.45))
+        pygame.draw.circle(glow, (*ACCENT_COLOR, 40), (int(WIDTH * 0.85), int(HEIGHT * 0.15)), int(WIDTH * 0.35))
+        self.screen.blit(glow, (0, 0))
+
+        title_y, buttons = self._menu_layout()
+        title = self.font_large.render("CONNECT-4 AI", True, TEXT_COLOR)
+        self.screen.blit(title, (WIDTH // 2 - title.get_width() // 2, title_y))
+
+        subtitle = self.font_small.render("Select difficulty", True, ACCENT_COLOR)
+        self.screen.blit(subtitle, (WIDTH // 2 - subtitle.get_width() // 2, title_y + 48))
+
+        labels = [
+            "Play vs AI - Standard",
+            "Play vs AI - Hard",
+            "Quit",
+        ]
+
+        for i, rect in enumerate(buttons):
+            hovered = rect.collidepoint(mouse_pos)
+            self._draw_menu_button(rect, labels[i], hovered)
+
+        pygame.display.flip()
+
+    def get_menu_action(self, mouse_pos) -> int:
+        _, buttons = self._menu_layout()
+        for i, rect in enumerate(buttons):
+            if rect.collidepoint(mouse_pos):
+                return i
+        return -1
 
     def draw(self, board, current_piece: int,
              game_over: bool = False, winner: int = EMPTY,
