@@ -5,7 +5,7 @@ from constants import (
     BG_COLOR, BOARD_COLOR, CELL_BORDER, EMPTY_COLOR,
     HUMAN_COLOR, HUMAN_GLOW, AI_COLOR, AI_GLOW,
     TEXT_COLOR, ACCENT_COLOR, WIN_BG, SHADOW,
-    HUMAN_PIECE, AI_PIECE, EMPTY, DROP_SPEED, FPS
+    HUMAN_PIECE, AI_PIECE, EMPTY, DROP_SPEED, FPS, GRAVITY, MAX_FALL_SPEED
 )
 
 
@@ -39,20 +39,47 @@ class GUI:
         self.anim_target_row = 0
         self.anim_y       = 0.0
         self.anim_target_y = 0.0
+        self.anim_velocity = 0.0
 
         # Hover state
         self.hover_col    = -1
 
-    def _draw_circle_glow(self, surface, color, glow_color, cx, cy, radius):
-        """Draw a circle with a soft glow ring."""
-        glow_surf = pygame.Surface((radius * 4, radius * 4), pygame.SRCALPHA)
-        pygame.draw.circle(glow_surf, (*glow_color, 60),
-                           (radius * 2, radius * 2), radius + 6)
-        surface.blit(glow_surf, (cx - radius * 2, cy - radius * 2))
-        pygame.draw.circle(surface, color, (cx, cy), radius)
-        pygame.draw.circle(surface, tuple(min(c + 60, 255) for c in color),
-                           (cx - radius // 5, cy - radius // 5),
-                           radius // 4)
+    def _shade_color(self, color, factor: float):
+        return tuple(max(0, min(255, int(c * factor))) for c in color)
+
+    def _draw_glow_rect(self, rect, color, alpha: int):
+        glow = pygame.Surface((rect.width + 24, rect.height + 24), pygame.SRCALPHA)
+        glow_rect = glow.get_rect()
+        pygame.draw.rect(
+            glow,
+            (*color, alpha),
+            glow_rect,
+            border_radius=16,
+        )
+        self.screen.blit(glow, (rect.x - 12, rect.y - 12))
+
+    def _draw_3d_piece(self, surface, color, cx, cy, radius):
+        shadow = pygame.Surface((radius * 2 + 12, radius * 2 + 12), pygame.SRCALPHA)
+        pygame.draw.circle(shadow, SHADOW, (radius + 6, radius + 6), radius + 2)
+        surface.blit(shadow, (cx - radius - 6, cy - radius - 2))
+
+        piece = pygame.Surface((radius * 2 + 2, radius * 2 + 2), pygame.SRCALPHA)
+        for i in range(radius, 0, -1):
+            t = i / radius
+            factor = 0.55 + (1.15 - 0.55) * (1 - t)
+            shade = self._shade_color(color, factor)
+            pygame.draw.circle(piece, shade, (radius + 1, radius + 1), i)
+
+        surface.blit(piece, (cx - radius - 1, cy - radius - 1))
+
+        highlight = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
+        pygame.draw.circle(
+            highlight,
+            (*TEXT_COLOR, 120),
+            (int(radius * 0.65), int(radius * 0.55)),
+            int(radius * 0.35),
+        )
+        surface.blit(highlight, (cx - radius, cy - radius))
 
     def _board_top(self):
         """Pixel y of the first board row (below the preview area)."""
@@ -85,6 +112,8 @@ class GUI:
         shadow = pygame.Surface((shadow_rect.width, shadow_rect.height), pygame.SRCALPHA)
         pygame.draw.rect(shadow, SHADOW, shadow.get_rect(), border_radius=14)
         self.screen.blit(shadow, shadow_rect.topleft)
+
+        self._draw_glow_rect(rect, ACCENT_COLOR, 35)
 
         if hovered:
             glow = pygame.Surface((rect.width + 30, rect.height + 30), pygame.SRCALPHA)
@@ -185,6 +214,10 @@ class GUI:
 
         # Board and pieces
         board_rect = pygame.Rect(0, self._board_top(), WIDTH, ROWS * CELL_SIZE)
+        board_shadow = pygame.Rect(board_rect.x, board_rect.y + 8, board_rect.width, board_rect.height)
+        shadow_surf = pygame.Surface((board_shadow.width, board_shadow.height), pygame.SRCALPHA)
+        pygame.draw.rect(shadow_surf, SHADOW, shadow_surf.get_rect(), border_radius=14)
+        self.screen.blit(shadow_surf, board_shadow.topleft)
         pygame.draw.rect(self.screen, BOARD_COLOR, board_rect, border_radius=12)
 
         for r in range(ROWS):
@@ -194,21 +227,25 @@ class GUI:
                 piece = board.grid[r][c]
                 if piece == EMPTY:
                     pygame.draw.circle(self.screen, EMPTY_COLOR, (cx, cy), RADIUS)
+                    rim = pygame.Surface((RADIUS * 2 + 6, RADIUS * 2 + 6), pygame.SRCALPHA)
+                    pygame.draw.circle(rim, (*CELL_BORDER, 140), (RADIUS + 3, RADIUS + 3), RADIUS + 1)
+                    pygame.draw.circle(rim, (*SHADOW[:3], 120), (RADIUS + 4, RADIUS + 5), RADIUS - 2)
+                    self.screen.blit(rim, (cx - RADIUS - 3, cy - RADIUS - 3))
                 else:
                     color = _piece_color(piece)
                     glow  = _piece_glow(piece)
                     if winning_cells and (r, c) in winning_cells:
-                        pygame.draw.circle(self.screen, glow, (cx, cy), RADIUS + 8)
-                        pygame.draw.circle(self.screen, (255, 255, 255), (cx, cy), RADIUS // 3)
-                    self._draw_circle_glow(self.screen, color, glow, cx, cy, RADIUS)
+                        ring = pygame.Surface((RADIUS * 3, RADIUS * 3), pygame.SRCALPHA)
+                        pygame.draw.circle(ring, (*ACCENT_COLOR, 80), (RADIUS * 1.5, RADIUS * 1.5), RADIUS + 8)
+                        self.screen.blit(ring, (cx - int(RADIUS * 1.5), cy - int(RADIUS * 1.5)))
+                    self._draw_3d_piece(self.screen, color, cx, cy, RADIUS)
 
         if self.anim_active:
             # Falling piece
             cx = self.anim_col * CELL_SIZE + CELL_SIZE // 2
             cy = int(self.anim_y)
             color = _piece_color(self.anim_piece)
-            glow  = _piece_glow(self.anim_piece)
-            self._draw_circle_glow(self.screen, color, glow, cx, cy, RADIUS)
+            self._draw_3d_piece(self.screen, color, cx, cy, RADIUS)
 
         if game_over:
             # End-game banner
@@ -253,8 +290,10 @@ class GUI:
 
         bw, bh = 480, 190
         bx, by = (WIDTH - bw) // 2, (HEIGHT - bh) // 2
+        banner_rect = pygame.Rect(bx, by, bw, bh)
+        self._draw_glow_rect(banner_rect, ACCENT_COLOR, 45)
         pygame.draw.rect(self.screen, WIN_BG,
-                         (bx, by, bw, bh), border_radius=20)
+                 banner_rect, border_radius=20)
 
         if winner == HUMAN_PIECE:
             msg   = "YOU WIN!"
@@ -294,6 +333,7 @@ class GUI:
         self.anim_target_row = row
         self.anim_y        = float(CELL_SIZE // 2)
         _, self.anim_target_y = self._cell_center(row, col)
+        self.anim_velocity = 0.0
 
     def update_animation(self) -> bool:
         """
@@ -303,10 +343,12 @@ class GUI:
         if not self.anim_active:
             return True
 
-        self.anim_y += DROP_SPEED
+        self.anim_velocity = min(self.anim_velocity + GRAVITY, MAX_FALL_SPEED)
+        self.anim_y += self.anim_velocity
         if self.anim_y >= self.anim_target_y:
             self.anim_y      = self.anim_target_y
             self.anim_active = False
+            self.anim_velocity = 0.0
             return True
 
         return False
