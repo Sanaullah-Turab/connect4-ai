@@ -17,14 +17,14 @@ WINDOW_SIZE = (WIDTH, HEIGHT)
 
 # Colors
 BG_COLOR        = (13,  17,  23)
-BOARD_COLOR     = (22,  33,  62)
+BOARD_COLOR     = (12,  20,  45)
 CELL_BORDER     = (30,  45,  80)
-EMPTY_COLOR     = (10,  14,  20)
+EMPTY_COLOR     = (6,   8,  12)
 
-HUMAN_COLOR     = (255, 75,  75)
-HUMAN_GLOW      = (255, 120, 120)
+HUMAN_COLOR     = (220, 24,  35)
+HUMAN_GLOW      = (255, 90,  90)
 
-AI_COLOR        = (255, 210, 50)
+AI_COLOR        = (255, 205, 35)
 AI_GLOW         = (255, 230, 120)
 
 TEXT_COLOR      = (220, 230, 255)
@@ -34,6 +34,9 @@ SHADOW          = (0,   0,   0,  120)
 
 # Timing
 FPS = 60
+
+GRAVITY = 1.8
+MAX_FALL_SPEED = 28
 
 DROP_SPEED = 18
 
