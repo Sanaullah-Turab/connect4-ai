@@ -64,6 +64,7 @@ class GUI:
         return cx, cy
 
     def _menu_layout(self):
+        # Menu layout geometry
         title_y = int(HEIGHT * 0.2)
         button_width = min(520, WIDTH - 80)
         button_height = 64
@@ -79,6 +80,7 @@ class GUI:
         return title_y, buttons
 
     def _draw_menu_button(self, rect, label, hovered: bool):
+        # Button shadow and hover glow
         shadow_rect = rect.move(0, 6)
         shadow = pygame.Surface((shadow_rect.width, shadow_rect.height), pygame.SRCALPHA)
         pygame.draw.rect(shadow, SHADOW, shadow.get_rect(), border_radius=14)
@@ -112,6 +114,7 @@ class GUI:
     def draw_menu(self, mouse_pos, human_wins: int, ai_wins: int, draws: int):
         self.screen.fill(BG_COLOR)
 
+        # Cinematic background glow
         glow = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
         pygame.draw.circle(glow, (*ACCENT_COLOR, 60), (int(WIDTH * 0.2), int(HEIGHT * 0.2)), int(WIDTH * 0.45))
         pygame.draw.circle(glow, (*ACCENT_COLOR, 40), (int(WIDTH * 0.85), int(HEIGHT * 0.15)), int(WIDTH * 0.35))
@@ -134,6 +137,7 @@ class GUI:
             hovered = rect.collidepoint(mouse_pos)
             self._draw_menu_button(rect, labels[i], hovered)
 
+        # Session record panel
         panel_width = min(560, WIDTH - 80)
         panel_height = 44
         panel_x = (WIDTH - panel_width) // 2
@@ -275,6 +279,7 @@ class GUI:
         self.screen.blit(sub, (bx + (bw - sub.get_width()) // 2,
                                by + 100))
 
+        # Session record line
         record = f"HUMAN {human_wins}  |  DRAWS {draws}  |  AI {ai_wins}"
         record_surf = self.font_small.render(record, True, ACCENT_COLOR)
         self.screen.blit(record_surf, (bx + (bw - record_surf.get_width()) // 2,

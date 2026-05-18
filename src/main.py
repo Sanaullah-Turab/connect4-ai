@@ -27,6 +27,7 @@ def run():
     selected_depth = 3
     menu_mouse_pos = (-1, -1)
 
+    # Session totals
     session_human_wins = 0
     session_ai_wins = 0
     session_draws = 0
@@ -51,11 +52,13 @@ def run():
                     gui.hover_col   = -1
 
             if state == STATE_MENU:
+                # Menu input handling
                 if event.type == pygame.MOUSEMOTION:
                     menu_mouse_pos = event.pos
 
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     choice = gui.get_menu_action(event.pos)
+                    # Map menu choice to AI depth or quit
                     if choice == 0:
                         selected_depth = 3
                     elif choice == 1:
@@ -65,6 +68,7 @@ def run():
                         sys.exit()
 
                     if choice in (0, 1):
+                        # Start a fresh game
                         board, state, current_piece, winner, winning_cells, pending_row, pending_col = new_game()
                         gui.anim_active = False
                         gui.hover_col   = -1
@@ -101,6 +105,7 @@ def run():
                     winning_cells = board.get_winning_cells(current_piece)
                     winner = current_piece
                     state         = STATE_GAME_OVER
+                    # Update session totals once per game
                     if current_piece == HUMAN_PIECE:
                         session_human_wins += 1
                     else:
@@ -109,6 +114,7 @@ def run():
                 elif board.is_full():
                     winner = EMPTY
                     state  = STATE_GAME_OVER
+                    # Update session totals once per game
                     session_draws += 1
 
                 else:

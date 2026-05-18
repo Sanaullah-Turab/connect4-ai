@@ -164,6 +164,7 @@ def get_ai_move(board, search_depth: int) -> int:
     Public interface: returns the best column for the AI to play.
     Called from main.py — no AI internals leak outside this file.
     """
+    # Use the selected depth for this session
     col, _ = minimax(board, search_depth, -math.inf, math.inf, True)
     # Fallback when no valid columns are found
     if col is None:
